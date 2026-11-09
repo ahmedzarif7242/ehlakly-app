@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>احلقلي | Ehla'ly — منصة الحلاقة الذكية</title>
+  <meta name="description" content="احلقلي: نظام حجز حلاقة ذكي للعميل والحلاق — طابور افتراضي مباشر، مساعد اختيار القصة، وإدارة كراسي." />
+  <script src="https://cdn.tailwindcss.com/3.4.16"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Cairo', 'Tajawal', 'sans-serif'] },
+          colors: {
+            gold: { DEFAULT: '#D4AF37', light: '#F5D77A', dark: '#A67C00' },
+            ink: { 900: '#0a0a0b', 800: '#141416', 700: '#1c1c20', 600: '#26262c', 500: '#34343c' },
+          },
+          boxShadow: { glow: '0 0 40px -10px rgba(212,175,55,0.45)' },
+          keyframes: {
+            float: { '0%,100%': { transform: 'translateY(0)' }, '50%': { transform: 'translateY(-6px)' } },
+            pop: { '0%': { transform: 'scale(.85)', opacity: 0 }, '100%': { transform: 'scale(1)', opacity: 1 } },
+            slideup: { '0%': { transform: 'translateY(20px)', opacity: 0 }, '100%': { transform: 'translateY(0)', opacity: 1 } },
+            shimmer: { '0%': { backgroundPosition: '-200% 0' }, '100%': { backgroundPosition: '200% 0' } },
+          },
+          animation: {
+            float: 'float 3s ease-in-out infinite',
+            pop: 'pop .25s ease-out both',
+            slideup: 'slideup .4s ease-out both',
+            shimmer: 'shimmer 2.5s linear infinite',
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    html, body { background: #0a0a0b; }
+    * { -webkit-tap-highlight-color: transparent; }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-thumb { background: #34343c; border-radius: 8px; }
+    .gold-text { background: linear-gradient(135deg,#F5D77A,#D4AF37,#A67C00); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .gold-border { border-image: linear-gradient(135deg,#F5D77A,#A67C00) 1; }
+    .glass { background: rgba(28,28,32,.7); backdrop-filter: blur(12px); }
+    .shimmer-bg { background: linear-gradient(90deg,#1c1c20 0%,#2a2a30 50%,#1c1c20 100%); background-size: 200% 100%; }
+    input, select, textarea { font-family: inherit; }
+    .no-spin::-webkit-outer-spin-button, .no-spin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  </style>
+</head>
+<body class="font-sans text-gray-200 min-h-screen selection:bg-gold/30">
+
+  <!-- ===== Ambient background ===== -->
+  <div class="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
+    <div class="absolute -top-40 -right-40 w-96 h-96 bg-gold/10 rounded-full blur-3xl"></div>
+    <div class="absolute top-1/2 -left-40 w-96 h-96 bg-amber-600/10 rounded-full blur-3xl"></div>
+    <div class="absolute inset-0 opacity-[0.03]" style="background-image:radial-gradient(#D4AF37 1px,transparent 1px);background-size:28px 28px;"></div>
+  </div>
+
+  <!-- ===== Top Nav ===== -->
+  <header class="sticky top-0 z-40 glass border-b border-white/5">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-gold-light to-gold-dark grid place-items-center shadow-glow text-ink-900 text-xl font-black animate-float">✂</div>
+        <div class="leading-tight">
+          <h1 class="text-lg font-black gold-text">احلقلي</h1>
+          <p class="text-[10px] text-gray-500 -mt-0.5 tracking-widest">EHLA'LY</p>
+        </div>
+      </div>
+
+      <!-- Mode toggle -->
+      <div class="relative bg-ink-700 rounded-full p-1 flex items-center text-sm font-bold select-none border border-white/5">
+        <div id="togglePill" class="absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-full bg-gradient-to-r from-gold-light to-gold-dark transition-all duration-300 shadow-glow right-1"></div>
+        <button onclick="setMode('client')" class="relative z-10 px-3 sm:px-5 py-1.5 rounded-full transition-colors" id="btnClient">
+          <span class="flex items-center gap-1.5">🧔 <span class="hidden xs:inline sm:inline">العميل</span></span>
+        </button>
+        <button onclick="setMode('barber')" class="relative z-10 px-3 sm:px-5 py-1.5 rounded-full transition-colors text-gray-400" id="btnBarber">
+          <span class="flex items-center gap-1.5">💈 <span class="hidden xs:inline sm:inline">الحلاق</span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 py-6 pb-28">
+    <!-- ======================= CLIENT APP ======================= -->
+    <section id="clientView"></section>
+    <!-- ======================= BARBER DASHBOARD ======================= -->
+    <section id="barberView" class="hidden"></section>
+  </main>
+
+  <!-- ===== Toast container ===== -->
+  <div id="toasts" class="fixed bottom-4 left-1/2 -translate-x-1/2 z-[60] flex flex-col gap-2 items-center w-[92%] max-w-sm"></div>
+
+  <!-- ===== Modal root ===== -->
+  <div id="modalRoot" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+    <div id="modalBox" class="w-full max-w-md glass border border-white/10 rounded-3xl p-5 animate-pop max-h-[88vh] overflow-y-auto"></div>
+  </div>
+
+  <footer class="text-center text-xs text-gray-600 pb-6">
+    صُنع بـ ✂ وشغف — <span class="gold-text font-bold">احلقلي</span> © 2025
+  </footer>
+
+<script>
+/* ============================================================
+   احلقلي — Ehla'ly  |  Single-file barbershop platform
+   ============================================================ */
+
+// ---------- Tiny store ----------
+const DB = {
+  get(k, fb){ try { const v = JSON.parse(localStorage.getItem('ehlaly_' + k)); return v === null ? fb : v; } catch { return fb; } },
+  set(k, v){ localStorage.setItem('ehlaly_' + k, JSON.stringify(v)); },
+};
+const uid = () => Math.random().toString(36).slice(2, 9);
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const money = n => (Math.round(n * 100) / 100).toLocaleString('ar-EG');
+
+// ---------- Seed mock data ----------
+function seed() {
+  if (DB.get('seeded', false)) return;
+  DB.set('barbers', [
+    { id: 'b1', name: 'أسطى كريم', emoji: '💈', rating: 4.9, bio: 'خبير فيد وتدريجات — 12 سنة خبرة', specialty: 'Fade & Beard' },
+    { id: 'b2', name: 'كابتن معتز', emoji: '✂', rating: 4.7, bio: 'كلاسيك وسشوار رجالي راقي', specialty: 'Classic' },
+    { id: 'b3', name: 'أسطى هاني', emoji: '🪒', rating: 4.8, bio: 'حلاقة ذقن وتشكيل احترافي', specialty: 'Beard Art' },
+  ]);
+  DB.set('services', [
+    { id: 's1', name: 'قص شعر', price: 80, duration: 30, icon: '💇' , cat: 'شعر'},
+    { id: 's2', name: 'حلاقة ذقن', price: 50, duration: 20, icon: '🧔', cat: 'ذقن' },
+    { id: 's3', name: 'سشوار', price: 40, duration: 15, icon: '💨', cat: 'تصفيف' },
+    { id: 's4', name: 'ماسك بشرة', price: 70, duration: 25, icon: '🧖', cat: 'عناية' },
+    { id: 's5', name: 'صبغة شعر', price: 150, duration: 50, icon: '🎨', cat: 'شعر' },
+    { id: 's6', name: 'باكدج عريس', price: 400, duration: 90, icon: '🤵', cat: 'باكدج' },
+  ]);
+  DB.set('chairs', [
+    { id: 'c1', name: 'كرسي 1', status: 'available', bookingId: null },
+    { id: 'c2', name: 'كرسي 2', status: 'available', bookingId: null },
+    { id: 'c3', name: 'كرسي 3', status: 'cleaning', bookingId: null },
+  ]);
+  DB.set('bookings', [
+    demoBooking('b1', ['s1','s2'], 'done', 'محمود سامي'),
+    demoBooking('b2', ['s1'], 'done', 'يوسف'),
+    demoBooking('b1', ['s1','s3'], 'waiting', 'كريم عادل'),
+    demoBooking('b3', ['s2'], 'waiting', 'طارق'),
+  ]);
+  DB.set('seeded', true);
+}
+function demoBooking(barberId, services, status, name) {
+  return { id: uid(), barberId, services, date: todayStr(), time: randTime(), status,
+    customerName: name, drink: 'قهوة', music: 'هادئة', isWalkIn: false, createdAt: Date.now() - Math.floor(Math.random()*6e6) };
+}
+function randTime(){ const h = 12 + Math.floor(Math.random()*8); const m = Math.random()<.5?'00':'30'; return `${String(h).padStart(2,'0')}:${m}`; }
+
+// ---------- Selectors ----------
+const barbers  = () => DB.get('barbers', []);
+const services = () => DB.get('services', []);
+const chairs   = () => DB.get('chairs', []);
+const bookings = () => DB.get('bookings', []);
+const svc = id => services().find(s => s.id === id);
+const barber = id => barbers().find(b => b.id === id);
+const activeQueue = () => bookings()
+  .filter(b => b.status === 'waiting' || b.status === 'in-progress')
+  .sort((a, b) => a.createdAt - b.createdAt);
+
+// ---------- Toasts ----------
+function toast(msg, type = 'ok') {
+  const colors = { ok: 'from-emerald-500 to-green-600', gold: 'from-gold-light to-gold-dark', warn: 'from-amber-500 to-orange-600', err: 'from-red-500 to-rose-600' };
+  const icon = { ok: '✅', gold: '✨', warn: '⚠️', err: '❌' }[type] || '✅';
+  const el = document.createElement('div');
+  el.className = `w-full text-center text-sm font-bold text-white px-4 py-3 rounded-2xl shadow-lg bg-gradient-to-r ${colors[type]||colors.ok} animate-slideup`;
+  el.innerHTML = `${icon} ${msg}`;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => { el.style.transition = 'opacity .4s, transform .4s'; el.style.opacity = '0'; el.style.transform = 'translateY(10px)'; setTimeout(() => el.remove(), 400); }, 2600);
+}
+
+// ---------- Modal ----------
+function openModal(html) {
+  document.getElementById('modalBox').innerHTML = html;
+  const r = document.getElementById('modalRoot');
+  r.classList.remove('hidden'); r.classList.add('flex');
+}
+function closeModal() {
+  const r = document.getElementById('modalRoot');
+  r.classList.add('hidden'); r.classList.remove('flex');
+}
+document.getElementById('modalRoot').addEventListener('click', e => { if (e.target.id === 'modalRoot') closeModal(); });
+
+// ---------- Mode ----------
+let MODE = DB.get('mode', 'client');
+function setMode(m) {
+  MODE = m; DB.set('mode', m);
+  const pill = document.getElementById('togglePill');
+  const bc = document.getElementById('btnClient'), bb = document.getElementById('btnBarber');
+  if (m === 'client') { pill.classList.add('right-1'); pill.classList.remove('left-1'); bc.classList.remove('text-gray-400'); bc.classList.add('text-ink-900'); bb.classList.add('text-gray-400'); bb.classList.remove('text-ink-900'); }
+  else { pill.classList.remove('right-1'); pill.classList.add('left-1'); bb.classList.remove('text-gray-400'); bb.classList.add('text-ink-900'); bc.classList.add('text-gray-400'); bc.classList.remove('text-ink-900'); }
+  document.getElementById('clientView').classList.toggle('hidden', m !== 'client');
+  document.getElementById('barberView').classList.toggle('hidden', m !== 'barber');
+  render();
+}
+
+/* ============================================================
+   CLIENT booking state
+   ============================================================ */
+let booking = { barberId: null, services: [], date: todayStr(), time: '', drink: 'قهوة', music: 'هادئة' };
+
+function toggleService(id) {
+  const i = booking.services.indexOf(id);
+  if (i > -1) booking.services.splice(i, 1); else booking.services.push(id);
+  renderClient();
+}
+function bookingTotals() {
+  const chosen = booking.services.map(svc).filter(Boolean);
+  return { price: chosen.reduce((s, x) => s + x.price, 0), time: chosen.reduce((s, x) => s + x.duration, 0), count: chosen.length };
+}
+function pickBarber(id){ booking.barberId = id; renderClient(); }
+function setVibe(k, v){ booking[k] = v; renderClient(); }
+
+function confirmBooking() {
+  if (!booking.barberId) return toast('اختر الحلاق الأول', 'warn');
+  if (!booking.services.length) return toast('اختر خدمة واحدة على الأقل', 'warn');
+  if (!booking.time) return toast('اختر وقت الحجز', 'warn');
+  const name = (document.getElementById('custName')?.value || '').trim() || 'عميل';
+  const id = uid();
+  const all = bookings();
+  all.push({ id, barberId: booking.barberId, services: [...booking.services], date: booking.date, time: booking.time,
+    status: 'waiting', customerName: name, drink: booking.drink, music: booking.music, isWalkIn: false, createdAt: Date.now() });
+  DB.set('bookings', all);
+  DB.set('myBooking', id);
+  confetti();
+  toast('تم تأكيد حجزك! 🎉 اتفرّج على تذكرتك', 'gold');
+  booking = { barberId: null, services: [], date: todayStr(), time: '', drink: 'قهوة', music: 'هادئة' };
+  renderClient();
+}
+
+function cancelMyBooking() {
+  const myId = DB.get('myBooking', null);
+  const all = bookings().map(b => b.id === myId ? { ...b, status: 'cancelled' } : b);
+  DB.set('bookings', all); DB.set('myBooking', null);
+  toast('تم إلغاء الحجز', 'warn'); renderClient();
+}
+
+/* ============================================================
+   CLIENT render
+   ============================================================ */
+function renderClient() {
+  const myId = DB.get('myBooking', null);
+  const mine = bookings().find(b => b.id === myId && (b.status === 'waiting' || b.status === 'in-progress'));
+  const t = bookingTotals();
+
+  const ticket = mine ? ticketHTML(mine) : '';
+
+  document.getElementById('clientView').innerHTML = `
+    ${ticket}
+
+    <!-- Hero -->
+    <div class="relative overflow-hidden rounded-3xl p-6 mb-6 bg-gradient-to-br from-ink-800 to-ink-700 border border-white/5">
+      <div class="absolute -left-6 -bottom-6 text-8xl opacity-10 animate-float">💈</div>
+      <h2 class="text-2xl font-black mb-1">احجز دورك في <span class="gold-text">ثواني</span></h2>
+      <p class="text-gray-400 text-sm">اختر حلاقك، خدماتك، ومزاجك — واحنا نجهزلك كل حاجة.</p>
+      <div class="mt-4 flex gap-2">
+        <button onclick="openStyleAI()" class="text-xs font-bold bg-gold/15 text-gold border border-gold/30 px-3 py-2 rounded-xl hover:bg-gold/25 transition flex items-center gap-1.5">🤖 مساعد اختيار القصة</button>
+        <span class="text-xs text-gray-500 self-center">ميزة حصرية</span>
+      </div>
+    </div>
+
+    <!-- Step 1: Barber -->
+    <h3 class="font-black text-lg mb-3 flex items-center gap-2"><span class="w-6 h-6 grid place-items-center rounded-lg bg-gold text-ink-900 text-xs">1</span> اختر الحلاق</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+      ${barbers().map(b => `
+        <button onclick="pickBarber('${b.id}')" class="text-right p-4 rounded-2xl border transition-all ${booking.barberId===b.id?'border-gold bg-gold/10 shadow-glow':'border-white/5 bg-ink-700 hover:border-white/15'}">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-ink-600 grid place-items-center text-2xl">${b.emoji}</div>
+            <div class="flex-1 min-w-0">
+              <div class="font-bold truncate">${b.name}</div>
+              <div class="text-[11px] text-amber-400">★ ${b.rating} <span class="text-gray-500">· ${b.specialty}</span></div>
+            </div>
+          </div>
+          <p class="text-[11px] text-gray-500 mt-2 leading-snug">${b.bio}</p>
+        </button>`).join('')}
+    </div>
+
+    <!-- Step 2: Services -->
+    <h3 class="font-black text-lg mb-3 flex items-center gap-2"><span class="w-6 h-6 grid place-items-center rounded-lg bg-gold text-ink-900 text-xs">2</span> اختر الخدمات</h3>
+    <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+      ${services().map(s => {
+        const on = booking.services.includes(s.id);
+        return `<button onclick="toggleService('${s.id}')" class="relative p-4 rounded-2xl border text-right transition-all ${on?'border-gold bg-gold/10':'border-white/5 bg-ink-700 hover:border-white/15'}">
+          ${on?'<span class="absolute top-2 left-2 w-5 h-5 rounded-full bg-gold text-ink-900 grid place-items-center text-xs font-black">✓</span>':''}
+          <div class="text-3xl mb-2">${s.icon}</div>
+          <div class="font-bold text-sm">${s.name}</div>
+          <div class="text-[11px] text-gray-400 mt-0.5">${money(s.price)} ج · ${s.duration} د</div>
+        </button>`; }).join('')}
+    </div>
+
+    <!-- Step 3: Vibe -->
+    <h3 class="font-black text-lg mb-3 flex items-center gap-2"><span class="w-6 h-6 grid place-items-center rounded-lg bg-gold text-ink-900 text-xs">3</span> جو الجلسة 🎵</h3>
+    <div class="grid grid-cols-2 gap-3 mb-6">
+      <div class="p-4 rounded-2xl bg-ink-700 border border-white/5">
+        <p class="text-xs text-gray-400 mb-2">المشروب</p>
+        <div class="flex flex-wrap gap-2">
+          ${['قهوة','شاي','ينسون','مياه','بدون'].map(d=>chip('drink',d)).join('')}
+        </div>
+      </div>
+      <div class="p-4 rounded-2xl bg-ink-700 border border-white/5">
+        <p class="text-xs text-gray-400 mb-2">الأجواء</p>
+        <div class="flex flex-wrap gap-2">
+          ${['هادئة','شرقي','أجنبي','جلسة صمت 🤫'].map(m=>chip('music',m)).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: Date/Time + Name -->
+    <h3 class="font-black text-lg mb-3 flex items-center gap-2"><span class="w-6 h-6 grid place-items-center rounded-lg bg-gold text-ink-900 text-xs">4</span> الموعد وبياناتك</h3>
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+      <input id="custName" placeholder="اسمك" class="bg-ink-700 border border-white/5 rounded-xl px-4 py-3 text-sm focus:border-gold outline-none" />
+      <input type="date" value="${booking.date}" onchange="booking.date=this.value" class="bg-ink-700 border border-white/5 rounded-xl px-4 py-3 text-sm focus:border-gold outline-none" />
+      <select onchange="booking.time=this.value" class="bg-ink-700 border border-white/5 rounded-xl px-4 py-3 text-sm focus:border-gold outline-none">
+        <option value="">اختر الوقت</option>
+        ${timeSlots().map(t=>`<option value="${t}" ${booking.time===t?'selected':''}>${t}</option>`).join('')}
+      </select>
+    </div>
+
+    <!-- Summary bar -->
+    <div class="sticky bottom-4 glass border border-gold/20 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-glow">
+      <div>
+        <div class="text-[11px] text-gray-400">الإجمالي · الوقت المتوقع</div>
+        <div class="font-black text-lg gold-text">${money(t.price)} ج <span class="text-gray-500 text-sm font-normal">· ${t.time} دقيقة</span></div>
+      </div>
+      <button onclick="confirmBooking()" class="bg-gradient-to-r from-gold-light to-gold-dark text-ink-900 font-black px-6 py-3 rounded-xl active:scale-95 transition shadow-lg">تأكيد الحجز ✂</button>
+    </div>
+  `;
+}
+
+function chip(group, val) {
+  const on = booking[group] === val;
+  return `<button onclick="setVibe('${group}','${val.replace(/'/g,"")}')" class="text-xs px-3 py-1.5 rounded-full border transition ${on?'bg-gold text-ink-900 border-gold font-bold':'bg-ink-600 border-white/5 text-gray-300'}">${val}</button>`;
+}
+function timeSlots() { const out = []; for (let h = 11; h <= 23; h++){ out.push(`${String(h).padStart(2,'0')}:00`); out.push(`${String(h).padStart(2,'0')}:30`); } return out; }
+
+function ticketHTML(mine) {
+  const q = activeQueue();
+  const idx = q.findIndex(b => b.id === mine.id);
+  const ahead = Math.max(0, idx);
+  const waitMin = q.slice(0, idx).reduce((s, b) => s + b.services.reduce((a, id) => a + (svc(id)?.duration || 0), 0), 0);
+  const myDur = mine.services.reduce((a, id) => a + (svc(id)?.duration || 0), 0);
+  const totalSpan = waitMin + myDur || 1;
+  const progress = mine.status === 'in-progress' ? 100 : Math.min(95, Math.round((1 - waitMin / (totalSpan)) * 100));
+  const b = barber(mine.barberId);
+  return `
+  <div class="relative overflow-hidden rounded-3xl p-5 mb-6 bg-gradient-to-br from-gold-dark/30 to-ink-800 border border-gold/30 shadow-glow animate-slideup">
+    <div class="absolute top-3 left-3 text-[10px] font-black bg-ink-900/60 text-gold px-2 py-1 rounded-full tracking-widest">تذكرتك الرقمية</div>
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-12 h-12 rounded-xl bg-ink-700 grid place-items-center text-2xl">${b?.emoji||'💈'}</div>
+      <div>
+        <div class="font-black">${mine.customerName} <span class="text-gray-500 text-xs font-normal">مع ${b?.name||''}</span></div>
+        <div class="text-[11px] text-gray-400">${mine.services.map(id=>svc(id)?.name).filter(Boolean).join(' + ')}</div>
+      </div>
+    </div>
+    ${mine.status === 'in-progress'
+      ? `<div class="text-center py-2"><div class="text-2xl font-black gold-text animate-pulse">دورك دلوقتي! 💈</div><p class="text-xs text-gray-400">استمتع بجلستك</p></div>`
+      : `<div class="flex items-center justify-between mb-2">
+          <div><span class="text-3xl font-black text-gold">${ahead}</span><span class="text-sm text-gray-400 mr-1">عميل أمامك</span></div>
+          <div class="text-left"><div class="text-2xl font-black">${waitMin}</div><div class="text-[11px] text-gray-400">دقيقة انتظار تقريبًا</div></div>
+        </div>`}
+    <div class="h-2.5 rounded-full bg-ink-900 overflow-hidden mt-2">
+      <div class="h-full rounded-full bg-gradient-to-r from-gold-light to-gold-dark transition-all duration-700" style="width:${progress}%"></div>
+    </div>
+    <div class="flex items-center justify-between mt-3">
+      <div class="text-[11px] text-gray-400">🥤 ${mine.drink} · 🎧 ${mine.music}</div>
+      <button onclick="cancelMyBooking()" class="text-[11px] text-red-400 font-bold hover:text-red-300">إلغاء الحجز</button>
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   Style AI Assistant  (rule-based recommender)
+   ============================================================ */
+const STYLE_DB = {
+  'بيضاوي|ناعم': [['قصة Side Part كلاسيك','تناسب الوجه البيضاوي وتبرز الملامح','💇'],['فيد منخفض مع فرق','مظهر عصري نظيف','✂'],['Quiff خفيف','يرفع الشعر لقدّام بأناقة','💈']],
+  'بيضاوي|خشن': [['Crew Cut','عملي ويتحكم في الشعر الخشن','💇'],['فيد متوسط','تدرّج نظيف وسهل','✂'],['Buzz Cut مرتب','بساطة وقوة','🪒']],
+  'مربع|ناعم': [['Pompadour','يضيف طول وارتفاع','💈'],['Textured Crop','يكسر حدّة الفك المربع','💇'],['فيد عالي','يطوّل شكل الوجه','✂']],
+  'مربع|خشن': [['Faux Hawk','جُرأة وتوازن للفك','💈'],['فيد عالي + لحية مشذبة','مظهر رجولي متناسق','🧔'],['Spiky Textured','حركة وطاقة','💇']],
+  'دائري|ناعم': [['High Fade + Volume','يطوّل الوجه الدائري','✂'],['Side Part عالي','يضيف زوايا','💇'],['Quiff طويل','ارتفاع لكسر الاستدارة','💈']],
+  'دائري|خشن': [['Angular Fringe','زوايا حادة تنحّف الوجه','💇'],['Undercut','تباين قوي','✂'],['Flat Top','يضيف طول وبنية','🪒']],
+};
+function openStyleAI() {
+  openModal(`
+    <div class="text-center mb-4">
+      <div class="text-4xl mb-2">🤖</div>
+      <h3 class="font-black text-xl gold-text">مساعد اختيار القصة</h3>
+      <p class="text-xs text-gray-400 mt-1">جاوب سؤالين وهرشّحلك 3 قصات تناسبك</p>
+    </div>
+    <label class="text-xs text-gray-400">شكل وجهك</label>
+    <div class="grid grid-cols-3 gap-2 my-2" id="faceOpts">
+      ${['بيضاوي','مربع','دائري'].map(f=>`<button data-v="${f}" onclick="aiPick('face',this)" class="aiBtn py-3 rounded-xl bg-ink-700 border border-white/5 text-sm font-bold">${f}</button>`).join('')}
+    </div>
+    <label class="text-xs text-gray-400">نوع شعرك</label>
+    <div class="grid grid-cols-2 gap-2 my-2" id="hairOpts">
+      ${['ناعم','خشن'].map(f=>`<button data-v="${f}" onclick="aiPick('hair',this)" class="aiBtn py-3 rounded-xl bg-ink-700 border border-white/5 text-sm font-bold">${f}</button>`).join('')}
+    </div>
+    <button onclick="runStyleAI()" class="w-full mt-3 bg-gradient-to-r from-gold-light to-gold-dark text-ink-900 font-black py-3 rounded-xl active:scale-95 transition">رشّحلي قصات ✨</button>
+    <button onclick="closeModal()" class="w-full mt-2 text-gray-500 text-sm py-2">إغلاق</button>
+    <div id="aiResult" class="mt-4"></div>
+  `);
+}
+let aiChoice = { face: null, hair: null };
+function aiPick(k, el) {
+  aiChoice[k] = el.dataset.v;
+  [...el.parentElement.children].forEach(c => c.classList.remove('border-gold','bg-gold/10','text-gold'));
+  el.classList.add('border-gold','bg-gold/10','text-gold');
+}
+function runStyleAI() {
+  if (!aiChoice.face || !aiChoice.hair) return toast('اختار شكل الوجه ونوع الشعر', 'warn');
+  const key = `${aiChoice.face}|${aiChoice.hair}`;
+  const recs = STYLE_DB[key] || STYLE_DB['بيضاوي|ناعم'];
+  document.getElementById('aiResult').innerHTML = `
+    <div class="space-y-2 animate-slideup">
+      <p class="text-xs text-gold font-bold">✨ ترشيحاتنا ليك:</p>
+      ${recs.map((r,i)=>`<div class="flex items-center gap-3 p-3 rounded-xl bg-ink-700 border border-white/5">
+        <div class="text-2xl">${r[2]}</div>
+        <div><div class="font-bold text-sm">${i+1}. ${r[0]}</div><div class="text-[11px] text-gray-400">${r[1]}</div></div>
+      </div>`).join('')}
+    </div>`;
+  aiChoice = { face: null, hair: null };
+}
+
+/* ============================================================
+   BARBER dashboard
+   ============================================================ */
+function barberStartNext(id) {
+  const freeChair = chairs().find(c => c.status === 'available');
+  if (!freeChair) return toast('مفيش كرسي متاح دلوقتي', 'warn');
+  DB.set('bookings', bookings().map(b => b.id === id ? { ...b, status: 'in-progress' } : b));
+  DB.set('chairs', chairs().map(c => c.id === freeChair.id ? { ...c, status: 'busy', bookingId: id } : c));
+  toast('بدأت الحلاقة على ' + freeChair.name, 'gold'); render();
+}
+function barberFinish(id) {
+  DB.set('bookings', bookings().map(b => b.id === id ? { ...b, status: 'done' } : b));
+  DB.set('chairs', chairs().map(c => c.bookingId === id ? { ...c, status: 'cleaning', bookingId: null } : c));
+  const myId = DB.get('myBooking', null); if (myId === id) DB.set('myBooking', null);
+  toast('تمت الحلاقة ✅ الكرسي للتعقيم', 'ok'); render();
+}
+function barberCancel(id) {
+  DB.set('bookings', bookings().map(b => b.id === id ? { ...b, status: 'cancelled' } : b));
+  DB.set('chairs', chairs().map(c => c.bookingId === id ? { ...c, status: 'available', bookingId: null } : c));
+  toast('تم الإلغاء', 'warn'); render();
+}
+function cycleChair(id) {
+  const order = { available: 'cleaning', cleaning: 'available', busy: 'busy' };
+  DB.set('chairs', chairs().map(c => c.id === id ? { ...c, status: order[c.status] } : c));
+  render();
+}
+function walkInModal() {
+  openModal(`
+    <h3 class="font-black text-xl mb-1">زبون دخل فجأة 🚶</h3>
+    <p class="text-xs text-gray-400 mb-4">ضيف Walk-in بسرعة للطابور</p>
+    <input id="wiName" placeholder="اسم الزبون" class="w-full bg-ink-700 border border-white/5 rounded-xl px-4 py-3 text-sm mb-3 focus:border-gold outline-none" />
+    <select id="wiBarber" class="w-full bg-ink-700 border border-white/5 rounded-xl px-4 py-3 text-sm mb-3 focus:border-gold outline-none">
+      ${barbers().map(b=>`<option value="${b.id}">${b.name}</option>`).join('')}
+    </select>
+    <p class="text-xs text-gray-400 mb-2">الخدمات</p>
+    <div class="grid grid-cols-2 gap-2 mb-4" id="wiServices">
+      ${services().map(s=>`<label class="flex items-center gap-2 p-2 rounded-xl bg-ink-700 border border-white/5 text-xs cursor-pointer"><input type="checkbox" value="${s.id}" class="accent-gold"> ${s.icon} ${s.name}</label>`).join('')}
+    </div>
+    <button onclick="addWalkIn()" class="w-full bg-gradient-to-r from-gold-light to-gold-dark text-ink-900 font-black py-3 rounded-xl active:scale-95 transition">إضافة للطابور</button>
+    <button onclick="closeModal()" class="w-full mt-2 text-gray-500 text-sm py-2">إلغاء</button>
+  `);
+}
+function addWalkIn() {
+  const name = (document.getElementById('wiName').value || '').trim() || 'Walk-in';
+  const barberId = document.getElementById('wiBarber').value;
+  const svcs = [...document.querySelectorAll('#wiServices input:checked')].map(i => i.value);
+  if (!svcs.length) return toast('اختر خدمة واحدة على الأقل', 'warn');
+  const all = bookings();
+  all.push({ id: uid(), barberId, services: svcs, date: todayStr(), time: randTime(), status: 'waiting',
+    customerName: name, drink: 'قهوة', music: 'هادئة', isWalkIn: true, createdAt: Date.now() });
+  DB.set('bookings', all);
+  closeModal(); toast('تمت إضافة الزبون للطابور', 'ok'); render();
+}
+
+function analytics() {
+  const done = bookings().filter(b => b.status === 'done' && b.date === todayStr());
+  const income = done.reduce((s, b) => s + b.services.reduce((a, id) => a + (svc(id)?.price || 0), 0), 0);
+  const avg = done.length ? Math.round(done.reduce((s, b) => s + b.services.reduce((a, id) => a + (svc(id)?.duration || 0), 0), 0) / done.length) : 0;
+  return { income, count: done.length, avg };
+}
+
+function renderBarber() {
+  const a = analytics();
+  const q = activeQueue();
+  document.getElementById('barberView').innerHTML = `
+    <!-- Analytics -->
+    <div class="grid grid-cols-3 gap-3 mb-6">
+      ${statCard('💰', money(a.income) + ' ج', 'دخل اليوم')}
+      ${statCard('👥', a.count, 'زبون اتخدم')}
+      ${statCard('⏱️', a.avg + ' د', 'متوسط الجلسة')}
+    </div>
+
+    <!-- Chairs -->
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="font-black text-lg flex items-center gap-2">💺 إدارة الكراسي</h3>
+      <button onclick="walkInModal()" class="text-xs font-bold bg-gold/15 text-gold border border-gold/30 px-3 py-2 rounded-xl hover:bg-gold/25 transition">+ زبون Walk-in</button>
+    </div>
+    <div class="grid grid-cols-3 gap-3 mb-6">
+      ${chairs().map(c => {
+        const map = { available: ['متاح','emerald','🟢'], busy: ['مشغول','amber','🔴'], cleaning: ['تعقيم','sky','🧼'] };
+        const [label, color, dot] = map[c.status];
+        const occ = c.bookingId ? bookings().find(b => b.id === c.bookingId) : null;
+        return `<button onclick="cycleChair('${c.id}')" class="p-4 rounded-2xl border bg-ink-700 border-white/5 text-right active:scale-95 transition">
+          <div class="flex items-center justify-between"><span class="font-bold text-sm">${c.name}</span><span>${dot}</span></div>
+          <div class="text-[11px] mt-1 text-${color}-400 font-bold">${label}</div>
+          ${occ?`<div class="text-[10px] text-gray-500 mt-1 truncate">${occ.customerName}</div>`:'<div class="text-[10px] text-gray-600 mt-1">—</div>'}
+        </button>`; }).join('')}
+    </div>
+
+    <!-- Queue -->
+    <h3 class="font-black text-lg mb-3 flex items-center gap-2">📋 الطابور (${q.length})</h3>
+    <div class="space-y-3">
+      ${q.length ? q.map((b, i) => queueRow(b, i)).join('') : `<div class="text-center text-gray-500 py-10 rounded-2xl bg-ink-700 border border-white/5">مفيش حجوزات في الطابور دلوقتي 💈</div>`}
+    </div>
+  `;
+}
+function statCard(icon, val, label) {
+  return `<div class="p-4 rounded-2xl bg-gradient-to-br from-ink-700 to-ink-800 border border-white/5 text-center">
+    <div class="text-2xl mb-1">${icon}</div>
+    <div class="font-black text-lg gold-text leading-none">${val}</div>
+    <div class="text-[11px] text-gray-400 mt-1">${label}</div>
+  </div>`;
+}
+function queueRow(b, i) {
+  const bar = barber(b.barberId);
+  const dur = b.services.reduce((a, id) => a + (svc(id)?.duration || 0), 0);
+  const price = b.services.reduce((a, id) => a + (svc(id)?.price || 0), 0);
+  const inProg = b.status === 'in-progress';
+  return `<div class="p-4 rounded-2xl border ${inProg?'border-gold bg-gold/5':'border-white/5 bg-ink-700'}">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg grid place-items-center font-black ${inProg?'bg-gold text-ink-900':'bg-ink-600 text-gold'}">${inProg?'💈':i+1}</div>
+      <div class="flex-1 min-w-0">
+        <div class="font-bold text-sm flex items-center gap-2">${b.customerName} ${b.isWalkIn?'<span class="text-[9px] bg-sky-500/20 text-sky-400 px-1.5 py-0.5 rounded">Walk-in</span>':''}</div>
+        <div class="text-[11px] text-gray-400 truncate">${bar?.emoji||''} ${bar?.name||''} · ${b.services.map(id=>svc(id)?.name).filter(Boolean).join('، ')}</div>
+      </div>
+      <div class="text-left shrink-0">
+        <div class="text-sm font-black gold-text">${money(price)} ج</div>
+        <div class="text-[10px] text-gray-500">${b.time} · ${dur}د</div>
+      </div>
+    </div>
+    <div class="flex gap-2 mt-3">
+      ${inProg
+        ? `<button onclick="barberFinish('${b.id}')" class="flex-1 bg-emerald-500/90 text-white text-xs font-bold py-2 rounded-xl active:scale-95">إنهاء الحلاقة ✅</button>`
+        : `<button onclick="barberStartNext('${b.id}')" class="flex-1 bg-gradient-to-r from-gold-light to-gold-dark text-ink-900 text-xs font-bold py-2 rounded-xl active:scale-95">بدء الحلاقة 💈</button>`}
+      <button onclick="barberCancel('${b.id}')" class="px-3 bg-ink-600 text-red-400 text-xs font-bold py-2 rounded-xl active:scale-95 border border-white/5">إلغاء</button>
+    </div>
+  </div>`;
+}
+
+/* ============================================================
+   Confetti (lightweight)
+   ============================================================ */
+function confetti() {
+  const colors = ['#F5D77A', '#D4AF37', '#A67C00', '#ffffff'];
+  for (let i = 0; i < 40; i++) {
+    const p = document.createElement('div');
+    p.style.cssText = `position:fixed;top:-10px;left:${Math.random()*100}vw;width:8px;height:8px;background:${colors[i%4]};z-index:70;border-radius:2px;pointer-events:none;transform:rotate(${Math.random()*360}deg)`;
+    document.body.appendChild(p);
+    const dur = 1200 + Math.random() * 1200;
+    p.animate([{ transform: `translateY(0) rotate(0)`, opacity: 1 }, { transform: `translateY(100vh) rotate(${Math.random()*720}deg)`, opacity: 0 }], { duration: dur, easing: 'cubic-bezier(.3,.6,.4,1)' });
+    setTimeout(() => p.remove(), dur);
+  }
+}
+
+/* ============================================================
+   Boot + live sync
+   ============================================================ */
+function render() { if (MODE === 'client') renderClient(); else renderBarber(); }
+
+seed();
+setMode(MODE);
+
+// cross-tab / cross-view live sync
+window.addEventListener('storage', e => { if (e.key && e.key.startsWith('ehlaly_')) render(); });
+// auto-refresh queue estimates every 15s
+setInterval(() => { if (MODE === 'client') { const myId = DB.get('myBooking', null); if (myId) renderClient(); } }, 15000);
+</script>
+</body>
+</html>
